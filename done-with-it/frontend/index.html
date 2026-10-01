@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Done With It | Pre-loved things at low prices</title>
+<style>
+  :root { --bg:#faf7f2; --ink:#262220; --accent:#d9480f; --line:#e7dfd3; --ok:#1a7f4b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:system-ui,sans-serif; }
+  header { background:var(--ink); color:#fff; padding:28px 16px; text-align:center; }
+  header h1 { margin:0; font-size:2rem; } header p { margin:6px 0 0; color:#d8cfc4; }
+  main { max-width:1000px; margin:0 auto; padding:20px 16px 60px; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .bar input { flex:1; min-width:180px; }
+  input, select, textarea { width:100%; padding:10px; border:1px solid var(--line); border-radius:8px; font:inherit; background:#fff; }
+  label { display:block; font-weight:600; font-size:.85rem; margin:12px 0 4px; }
+  button { font:inherit; border:0; border-radius:8px; padding:10px 16px; cursor:pointer; background:var(--accent); color:#fff; }
+  button.plain { background:#e9e2d7; color:var(--ink); } button.red { background:#b3261e; }
+  :focus-visible { outline:3px solid #2a8cff; outline-offset:2px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; }
+  .card img { width:100%; aspect-ratio:1/1; object-fit:cover; background:#eee; }
+  .info { padding:12px; display:flex; flex-direction:column; gap:4px; flex:1; }
+  .price { font-size:1.2rem; font-weight:700; color:var(--accent); }
+  .meta { font-size:.85rem; color:#6d625a; }
+  .card a.buy { margin-top:auto; text-align:center; text-decoration:none; background:var(--ok); color:#fff; padding:10px; border-radius:8px; }
+  .card button.link { background:none; color:#6d625a; font-size:.8rem; padding:6px 0 0; text-decoration:underline; }
+  dialog { border:0; border-radius:14px; max-width:460px; width:92%; padding:20px; }
+  dialog::backdrop { background:rgba(0,0,0,.5); }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  #preview { max-width:100%; max-height:200px; margin-top:8px; border-radius:8px; }
+  .note { font-size:.8rem; color:#6d625a; } #msg, #fmsg, #mmsg { min-height:1.3em; font-size:.9rem; margin-top:8px; color:#b3261e; }
+  #empty { text-align:center; color:#6d625a; padding:40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Done With It</h1>
+  <p>Someone's finished with it. You might need it. Low prices, no fuss.</p>
+</header>
+<main>
+  <div class="bar">
+    <input id="q" type="search" placeholder="Search shoes, calculator, phone..." aria-label="Search items">
+    <button id="sell">Sell an item</button>
+  </div>
+  <div id="msg" role="alert"></div>
+  <div class="grid" id="grid"></div>
+  <p id="empty" hidden>No items yet. Be the first to sell something!</p>
+</main>
+
+<dialog id="sellDlg">
+  <form id="sellForm">
+    <h2 style="margin-top:0">Sell an item</h2>
+    <label for="photo">Photo</label>
+    <input id="photo" type="file" accept="image/*" required>
+    <img id="preview" alt="" hidden>
+    <label for="title">What is it?</label><input id="title" maxlength="80" required placeholder="e.g. Nike running shoes, size 42">
+    <label for="desc">Description</label><textarea id="desc" rows="3" maxlength="500" placeholder="How long you used it, any flaws..."></textarea>
+    <div class="row2">
+      <div><label for="price">Price</label><input id="price" type="number" min="0" step="1" required></div>
+      <div><label for="cond">Condition</label>
+        <select id="cond"><option>Like new</option><option selected>Good</option><option>Fair</option></select></div>
+    </div>
+    <label for="loc">Your town / area</label><input id="loc" maxlength="60" placeholder="e.g. Buea">
+    <div class="row2">
+      <div><label for="sname">Your name</label><input id="sname" maxlength="60" required></div>
+      <div><label for="wa">WhatsApp number</label><input id="wa" type="tel" required placeholder="2376XXXXXXXX"></div>
+    </div>
+    <label for="pin">Secret PIN (4+ characters)</label><input id="pin" type="password" minlength="4" required>
+    <p class="note">Remember your PIN. You need it to change the price, mark the item sold, or delete it. Buyers will contact you on WhatsApp.</p>
+    <div style="display:flex;gap:8px"><button type="submit" id="post">Post item</button><button type="button" class="plain" id="closeSell">Cancel</button></div>
+    <div id="fmsg" role="alert"></div>
+  </form>
+</dialog>
+
+<dialog id="manageDlg">
+  <h2 style="margin-top:0">Manage your listing</h2>
+  <p id="mtitle" class="note"></p>
+  <label for="mpin">Your PIN</label><input id="mpin" type="password">
+  <label for="mprice">New price (optional)</label><input id="mprice" type="number" min="0" step="1">
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+    <button id="mUpdate">Update price</button>
+    <button id="mSold" class="plain">Mark as sold</button>
+    <button id="mDelete" class="red">Delete</button>
+    <button id="mClose" class="plain">Close</button>
+  </div>
+  <div id="mmsg" role="alert"></div>
+</dialog>
+
+<script>
+  // The deploy script fills this in automatically. Otherwise paste the ApiUrl output here.
+  const API_URL = "PASTE_API_URL_HERE";
+  const CURRENCY = "XAF";
+
+  const $ = (id) => document.getElementById(id);
+  let all = [], managing = null, photoB64 = null;
+
+  async function api(path, opts = {}) {
+    opts.headers = { "Content-Type": "application/json" };
+    const res = await fetch(API_URL + path, opts);
+    const body = res.status === 204 ? null : await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((body && body.error) || "Request failed (" + res.status + ")");
+    return body;
+  }
+
+  function render() {
+    const q = $("q").value.trim().toLowerCase();
+    const items = all.filter((i) => !q || (i.title + " " + i.description + " " + i.location).toLowerCase().includes(q));
+    const grid = $("grid"); grid.textContent = "";
+    $("empty").hidden = items.length > 0;
+    items.forEach((i) => {
+      const card = document.createElement("div"); card.className = "card";
+      const img = document.createElement("img"); img.src = i.imageUrl; img.alt = i.title; img.loading = "lazy";
+      const info = document.createElement("div"); info.className = "info";
+      const price = document.createElement("div"); price.className = "price";
+      price.textContent = Number(i.price).toLocaleString() + " " + CURRENCY;
+      const title = document.createElement("strong"); title.textContent = i.title;
+      const meta = document.createElement("div"); meta.className = "meta";
+      meta.textContent = i.condition + (i.location ? " | " + i.location : "") + " | " + i.sellerName;
+      const desc = document.createElement("div"); desc.className = "meta"; desc.textContent = i.description;
+      const buy = document.createElement("a"); buy.className = "buy"; buy.target = "_blank"; buy.rel = "noopener";
+      buy.textContent = "Message seller on WhatsApp";
+      buy.href = "https://wa.me/" + encodeURIComponent(i.whatsapp) + "?text=" +
+        encodeURIComponent("Hi " + i.sellerName + ", I'm interested in your " + i.title + " on Done With It.");
+      const mine = document.createElement("button"); mine.className = "link"; mine.textContent = "I'm the seller";
+      mine.onclick = () => { managing = i; $("mtitle").textContent = i.title; $("mpin").value = ""; $("mprice").value = ""; $("mmsg").textContent = ""; $("manageDlg").showModal(); };
+      info.append(price, title, meta, desc, buy, mine);
+      card.append(img, info); grid.appendChild(card);
+    });
+  }
+
+  async function load() {
+    try { all = await api("/listings"); $("msg").textContent = ""; render(); }
+    catch (e) { $("msg").textContent = "Could not load items. " + e.message; }
+  }
+
+  // Shrink the photo in the browser (max 900px JPEG) so uploads are fast and cheap
+  function toJpegBase64(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image(), url = URL.createObjectURL(file);
+      img.onload = () => {
+        const s = Math.min(1, 900 / Math.max(img.width, img.height));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve(c.toDataURL("image/jpeg", 0.8).split(",")[1]);
+      };
+      img.onerror = () => reject(new Error("Could not read that photo"));
+      img.src = url;
+    });
+  }
+
+  $("q").addEventListener("input", render);
+  $("sell").onclick = () => { $("fmsg").textContent = ""; $("sellDlg").showModal(); };
+  $("closeSell").onclick = () => $("sellDlg").close();
+  $("mClose").onclick = () => $("manageDlg").close();
+
+  $("photo").addEventListener("change", async () => {
+    const f = $("photo").files[0]; if (!f) return;
+    try {
+      photoB64 = await toJpegBase64(f);
+      $("preview").src = "data:image/jpeg;base64," + photoB64; $("preview").hidden = false;
+    } catch (e) { $("fmsg").textContent = e.message; }
+  });
+
+  $("sellForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (!photoB64) { $("fmsg").textContent = "Please add a photo."; return; }
+    $("post").disabled = true; $("fmsg").style.color = "#6d625a"; $("fmsg").textContent = "Posting...";
+    try {
+      await api("/listings", { method: "POST", body: JSON.stringify({
+        image: photoB64, title: $("title").value, description: $("desc").value, price: $("price").value,
+        condition: $("cond").value, location: $("loc").value, sellerName: $("sname").value,
+        whatsapp: $("wa").value, pin: $("pin").value }) });
+      $("sellForm").reset(); $("preview").hidden = true; photoB64 = null;
+      $("sellDlg").close(); load();
+    } catch (e) { $("fmsg").style.color = "#b3261e"; $("fmsg").textContent = e.message; }
+    $("post").disabled = false;
+  });
+
+  async function manage(method, body, done) {
+    try {
+      await api("/listings/" + managing.id, { method, body: JSON.stringify(Object.assign({ pin: $("mpin").value }, body)) });
+      $("manageDlg").close(); load(); if (done) alert(done);
+    } catch (e) { $("mmsg").textContent = e.message; }
+  }
+  $("mUpdate").onclick = () => $("mprice").value ? manage("PUT", { price: $("mprice").value }, "Price updated.") : ($("mmsg").textContent = "Enter a new price first.");
+  $("mSold").onclick = () => manage("PUT", { status: "sold" }, "Marked as sold. It is now hidden from buyers.");
+  $("mDelete").onclick = () => { if (confirm("Delete this listing for good?")) manage("DELETE", {}, "Listing deleted."); };
+
+  load();
+</script>
+</body>
+</html>
