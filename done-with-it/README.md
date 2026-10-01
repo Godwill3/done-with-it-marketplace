@@ -1,6 +1,6 @@
 # Done With It: a second-hand marketplace on AWS
 
-**Live demo:** PASTE_YOUR_WEBSITE_URL_HERE
+**Live demo:** http://done-with-it-websitebucket-3girxie5ixmo.s3-website-us-east-1.amazonaws.com/
 
 People upload things they no longer use (shoes, a calculator, a phone) with a photo and a low price.
 Buyers browse, search, and message the seller on WhatsApp.
